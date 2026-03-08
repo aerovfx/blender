@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blender MCP Bot Control</title>
+    <style>
+        :root {
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --bg-tertiary: #0f3460;
+            --text-primary: #eee;
+            --text-secondary: #aaa;
+            --accent: #e94560;
+            --success: #4ecca3;
+            --warning: #ffc107;
+            --error: #ff6b6b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: var(--bg-secondary);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        header h1 {
+            color: var(--accent);
+            font-size: 1.8em;
+        }
+
+        .status-bar {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--error);
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected {
+            background: var(--success);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .panel {
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .panel h2 {
+            color: var(--accent);
+            margin-bottom: 15px;
+            font-size: 1.2em;
+            border-bottom: 1px solid var(--bg-tertiary);
+            padding-bottom: 10px;
+        }
+
+        .chat-container {
+            height: 400px;
+            overflow-y: auto;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 12px;
+            border-radius: 8px;
+            max-width: 85%;
+        }
+
+        .message.user {
+            background: var(--bg-tertiary);
+            margin-left: auto;
+            border: 1px solid var(--accent);
+        }
+
+        .message.assistant {
+            background: var(--bg-primary);
+            border: 1px solid var(--success);
+        }
+
+        .message.error {
+            background: rgba(255, 107, 107, 0.2);
+            border: 1px solid var(--error);
+        }
+
+        .input-area {
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-area input {
+            flex: 1;
+            padding: 12px 15px;
+            border: none;
+            border-radius: 8px;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .input-area input:focus {
+            outline: 2px solid var(--accent);
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #ff6b6b;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: var(--bg-primary);
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-primary);
+        }
+
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .tool-card {
+            background: var(--bg-tertiary);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .tool-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+
+        .tool-card .icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .tool-card .name {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .scene-info {
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .scene-info h3 {
+            color: var(--success);
+            margin-bottom: 10px;
+        }
+
+        .object-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .object-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px;
+            background: var(--bg-primary);
+            margin-bottom: 5px;
+            border-radius: 4px;
+        }
+
+        .templates-section {
+            margin-top: 20px;
+        }
+
+        .template-select {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            margin-bottom: 10px;
+        }
+
+        .template-params {
+            display: grid;
+            gap: 10px;
+        }
+
+        .template-param {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .template-param label {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .template-param input {
+            padding: 8px;
+            border: none;
+            border-radius: 4px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        .log-container {
+            background: #0d1117;
+            border-radius: 8px;
+            padding: 15px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .log-entry.info {
+            color: var(--success);
+        }
+
+        .log-entry.warning {
+            color: var(--warning);
+        }
+
+        .log-entry.error {
+            color: var(--error);
+            background: rgba(255, 107, 107, 0.1);
+        }
+
+        .connection-panel {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .connection-panel input {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid var(--bg-tertiary);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎬 Blender MCP Bot Control</h1>
+            <div class="status-bar">
+                <div class="status-indicator">
+                    <div class="status-dot" id="statusDot"></div>
+                    <span id="statusText">Disconnected</span>
+                </div>
+                <button class="btn-secondary" id="refreshBtn" onclick="refreshScene()">🔄 Refresh</button>
+            </div>
+        </header>
+
+        <div class="connection-panel">
+            <input type="text" id="wsUrl" value="ws://localhost:8765" placeholder="WebSocket URL">
+            <button class="btn-success" id="connectBtn" onclick="toggleConnection()">Connect</button>
+        </div>
+
+        <div class="main-grid">
+            <!-- Chat Panel -->
+            <div class="panel">
+                <h2>💬 AI Chat</h2>
+                <div class="chat-container" id="chatContainer">
+                    <div class="message assistant">
+                        Welcome to Blender MCP Bot! Connect to the server and start creating 3D content with natural language.
+                    </div>
+                </div>
+                <div class="input-area">
+                    <input type="text" id="chatInput" placeholder="Describe what you want to create..." 
+                           onkeypress="if(event.key==='Enter')sendMessage()">
+                    <button class="btn-primary" onclick="sendMessage()" id="sendBtn">Send</button>
+                </div>
+
+                <div class="templates-section">
+                    <h3 style="margin: 15px 0 10px; color: var(--accent);">📋 Quick Templates</h3>
+                    <select class="template-select" id="templateSelect" onchange="loadTemplate()">
+                        <option value="">Select a template...</option>
+                        <option value="simple_scene">Simple Scene</option>
+                        <option value="product_showcase">Product Showcase</option>
+                        <option value="bouncing_ball">Bouncing Ball Animation</option>
+                        <option value="architectural_interior">Room Interior</option>
+                    </select>
+                    <div id="templateParams" class="template-param hidden"></div>
+                </div>
+            </div>
+
+            <!-- Tools Panel -->
+            <div class="panel">
+                <h2>🛠️ Quick Tools</h2>
+                <div class="tools-grid">
+                    <div class="tool-card" onclick="quickAction('create_cube')">
+                        <div class="icon">📦</div>
+                        <div class="name">Add Cube</div>
+                    </div>
+                    <div class="tool-card" onclick="quickAction('create_sphere')">
+                        <div class="icon">🔮</div>
+                        <div class="name">Add Sphere</div>
+                    </div>
+                    <div class="tool-card" onclick="quickAction('create_light')">
+                        <div class="icon">💡</div>
+                        <div class="name">Add Light</div>
+                    </div>
+                    <div class="tool-card" onclick="quickAction('create_camera')">
+                        <div class="icon">📷</div>
+                        <div class="name">Add Camera</div>
+                    </div>
+                    <div class="tool-card" onclick="quickAction('get_scene_info')">
+                        <div class="icon">📊</div>
+                        <div class="name">Scene Info</div>
+                    </div>
+                    <div class="tool-card" onclick="quickAction('clear_scene')">
+                        <div class="icon">🗑️</div>
+                        <div class="name">Clear Scene</div>
+                    </div>
+                </div>
+
+                <div class="scene-info">
+                    <h3>📋 Scene Objects</h3>
+                    <div class="object-list" id="objectList">
+                        <div style="color: var(--text-secondary);">Connect to see objects...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Log Panel -->
+            <div class="panel full-width">
+                <h2>📜 Activity Log</h2>
+                <div class="log-container" id="logContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let messageId = 0;
+
+        // Connection management
+        function toggleConnection() {
+            if (ws) {
+                ws.close();
+            } else {
+                connect();
+            }
+        }
+
+        function connect() {
+            const url = document.getElementById('wsUrl').value;
+            log('Connecting to ' + url + '...', 'info');
+            
+            try {
+                ws = new WebSocket(url);
+                
+                ws.onopen = () => {
+                    updateStatus(true);
+                    log('Connected to Blender MCP Server', 'info');
+                    addMessage('assistant', 'Connected! Ready to create 3D content.');
+                };
+                
+                ws.onclose = () => {
+                    updateStatus(false);
+                    log('Disconnected from server', 'warning');
+                };
+                
+                ws.onerror = (error) => {
+                    log('WebSocket error: ' + error, 'error');
+                };
+                
+                ws.onmessage = (event) => {
+                    handleMessage(JSON.parse(event.data));
+                };
+            } catch (e) {
+                log('Connection error: ' + e.message, 'error');
+            }
+        }
+
+        function updateStatus(connected) {
+            const dot = document.getElementById('statusDot');
+            const text = document.getElementById('statusText');
+            const btn = document.getElementById('connectBtn');
+            
+            if (connected) {
+                dot.classList.add('connected');
+                text.textContent = 'Connected';
+                btn.textContent = 'Disconnect';
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-secondary');
+            } else {
+                dot.classList.remove('connected');
+                text.textContent = 'Disconnected';
+                btn.textContent = 'Connect';
+                btn.classList.add('btn-success');
+                btn.classList.remove('btn-secondary');
+            }
+        }
+
+        // Message handling
+        function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            
+            if (!message || !ws) return;
+            
+            addMessage('user', message);
+            input.value = '';
+            
+            const request = {
+                type: 'request',
+                id: ++messageId,
+                method: 'chat_with_llm',
+                params: { message: message }
+            };
+            
+            ws.send(JSON.stringify(request));
+            log('Sent: ' + message, 'info');
+        }
+
+        function handleMessage(data) {
+            if (data.type === 'response') {
+                const result = data.result;
+                if (result.success) {
+                    addMessage('assistant', result.response || 'Done!');
+                    log('Tool executed: ' + data.result.tool, 'info');
+                } else {
+                    addMessage('error', result.error || 'Unknown error');
+                    log('Error: ' + result.error, 'error');
+                }
+                refreshScene();
+            } else if (data.type === 'welcome') {
+                log('Server welcome: ' + data.message, 'info');
+            } else if (data.type === 'error') {
+                addMessage('error', data.error);
+                log('Server error: ' + data.error, 'error');
+            }
+        }
+
+        function addMessage(role, content) {
+            const container = document.getElementById('chatContainer');
+            const div = document.createElement('div');
+            div.className = 'message ' + role;
+            div.textContent = content;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Quick actions
+        function quickAction(action) {
+            if (!ws) {
+                log('Not connected!', 'error');
+                return;
+            }
+            
+            const actions = {
+                'create_cube': { method: 'create_object', params: { type: 'cube', name: 'Cube' } },
+                'create_sphere': { method: 'create_object', params: { type: 'sphere', name: 'Sphere' } },
+                'create_light': { method: 'create_light', params: { type: 'SUN', name: 'Sun' } },
+                'create_camera': { method: 'create_camera', params: { name: 'Camera' } },
+                'get_scene_info': { method: 'get_scene_info', params: {} },
+                'clear_scene': { method: 'clear_scene', params: { confirm: true } }
+            };
+            
+            const req = actions[action];
+            if (req) {
+                ws.send(JSON.stringify({
+                    type: 'request',
+                    id: ++messageId,
+                    ...req
+                }));
+                log('Action: ' + action, 'info');
+            }
+        }
+
+        function refreshScene() {
+            if (!ws) return;
+            
+            ws.send(JSON.stringify({
+                type: 'request',
+                id: ++messageId,
+                method: 'get_scene_info',
+                params: {}
+            }));
+        }
+
+        // Template handling
+        function loadTemplate() {
+            const select = document.getElementById('templateSelect');
+            const paramsDiv = document.getElementById('templateParams');
+            
+            const templates = {
+                'simple_scene': {
+                    params: ['object_count', 'object_type', 'arrangement'],
+                    defaults: { object_count: 5, object_type: 'cube', arrangement: 'circle' }
+                },
+                'bouncing_ball': {
+                    params: ['radius', 'bounce_count', 'max_height'],
+                    defaults: { radius: 0.5, bounce_count: 3, max_height: 5 }
+                }
+            };
+            
+            const template = templates[select.value];
+            if (!template) {
+                paramsDiv.classList.add('hidden');
+                return;
+            }
+            
+            paramsDiv.classList.remove('hidden');
+            paramsDiv.innerHTML = template.params.map(p => `
+                <div class="template-param">
+                    <label>${p}</label>
+                    <input type="text" id="param_${p}" value="${template.defaults[p] || ''}">
+                </div>
+            `).join('');
+        }
+
+        // Logging
+        function log(message, type = 'info') {
+            const container = document.getElementById('logContainer');
+            const div = document.createElement('div');
+            div.className = 'log-entry ' + type;
+            const time = new Date().toLocaleTimeString();
+            div.textContent = `[${time}] ${message}`;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Initialize
+        log('Blender MCP Bot Control initialized', 'info');
+    </script>
+</body>
+</html>
