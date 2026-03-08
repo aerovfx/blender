@@ -14,8 +14,9 @@ anthropic>=0.18.0
 openai>=1.0.0
 requests>=2.31.0
 
-# Web Interface (Phase 2)
+# Web Interface & Embedded Engine (Phase 2)
 aiohttp>=3.9.0
+Pillow>=10.0.0
 
 # For development/testing
 pytest>=7.0.0
